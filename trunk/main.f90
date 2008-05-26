@@ -2,6 +2,8 @@ program main
 
 use nr,only:indexx
 implicit none
+
+!integer,parameter :: n_pop=1000,L=300,epoch=100,n_gen=100000,n_gates=30,n_gates_nom=20,n_transient=5,n_inp=4
 integer,parameter :: n_pop=1000,L=300,epoch=100,n_gen=100000,n_gates=50,n_gates_nom=30,n_transient=5,n_inp=8
 integer :: goal,gen,gate1,gate2
 integer :: a,b,c
@@ -10,8 +12,6 @@ integer,dimension(n_gates) :: active = 0
 integer,dimension(n_gates,n_pop) :: x=0,y=0
 integer,dimension( 2**n_inp) :: out = 0
 integer,dimension( n_pop ) :: order = 0
-
-
 integer,dimension(n_gates , n_pop):: in1=0 , in2=0
 integer,dimension(n_gates , n_pop) :: state=0
 real, dimension(n_pop) :: qual = 0.0
@@ -30,6 +30,7 @@ do a = 1,2**n_inp
 end do
 
 out = iand(ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:))),ior(ieor(inp(5,:),inp(6,:)),ieor(inp(7,:),inp(8,:))))
+!out = iand(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:)))
 !out(5) = 0
 print*, out 
 !pause
@@ -115,9 +116,9 @@ do a = 1,n_pop
       old_sum = sum(active)
           do b = 1,n_gates
              if(active(n_gates+1-b).gt.0) then
-                    active(in1(n_gates+1-b,a)) = 1
-                        active(in2(n_gates+1-b,a)) = 1
-                  end if
+                 active(in1(n_gates+1-b,a)) = 1
+                 active(in2(n_gates+1-b,a)) = 1
+             end if
       end do
    end do
    
