@@ -44,7 +44,7 @@ do while (again)
    
    do b = n_inp+1,n_gates
       call random_number(rand)
-	  in1(b,a) = floor(rand(1)*n_gates)+1
+          in1(b,a) = floor(rand(1)*n_gates)+1
       in2(b,a) = floor(rand(2)*n_gates)+1 
    end do
 
@@ -54,11 +54,11 @@ do while (again)
    
    do while (sum(active).gt.old_sum)
       old_sum = sum(active)
-	  do b = 1,n_gates
-	     if(active(n_gates+1-b).gt.0) then
-		    active(in1(n_gates+1-b,a)) = 1
-			active(in2(n_gates+1-b,a)) = 1
-		  end if
+          do b = 1,n_gates
+             if(active(n_gates+1-b).gt.0) then
+                    active(in1(n_gates+1-b,a)) = 1
+                        active(in2(n_gates+1-b,a)) = 1
+                  end if
       end do
    end do
    
@@ -66,10 +66,10 @@ do while (again)
       again = .true.
    else
       !if (sum(active(n_inp+1:n_gates-1)) /= n_gates_nom) then
-	  !   again = .true.
+          !   again = .true.
       !else
          again = .false.
-	  !end if
+          !end if
    end if 
 
 end do
@@ -88,20 +88,20 @@ qual = 0
 !evaluate nets
 do c = 1,2**n_inp
     state = 0
-	x = 0
-	y = 0
-	do a = 1,n_transient
-		state(1:n_inp,:) = spread(inp(:,c),ncopies=n_pop,dim=2)
-		do b = 1,n_pop
-			x(n_inp+1:n_gates,b) = state(in1(n_inp+1:n_gates,b),b)
-			y(n_inp+1:n_gates,b) = state(in2(n_inp+1:n_gates,b),b)
-		end do
-		state(n_inp+1:n_gates,:) = 1 - x(n_inp+1:n_gates,:)*y(n_inp+1:n_gates,:)
-	end do
-	
+        x = 0
+        y = 0
+        do a = 1,n_transient
+                state(1:n_inp,:) = spread(inp(:,c),ncopies=n_pop,dim=2)
+                do b = 1,n_pop
+                        x(n_inp+1:n_gates,b) = state(in1(n_inp+1:n_gates,b),b)
+                        y(n_inp+1:n_gates,b) = state(in2(n_inp+1:n_gates,b),b)
+                end do
+                state(n_inp+1:n_gates,:) = 1 - x(n_inp+1:n_gates,:)*y(n_inp+1:n_gates,:)
+        end do
+        
 
-	qual = qual +  NOT(IEOR(state(n_gates,:),spread(out(c),ncopies=n_pop,dim=1)))+2
-		
+        qual = qual +  NOT(IEOR(state(n_gates,:),spread(out(c),ncopies=n_pop,dim=1)))+2
+                
 end do
 !print*,qual
 !pause
@@ -113,21 +113,21 @@ do a = 1,n_pop
    
    do while (sum(active).gt.old_sum)
       old_sum = sum(active)
-	  do b = 1,n_gates
-	     if(active(n_gates+1-b).gt.0) then
-		    active(in1(n_gates+1-b,a)) = 1
-			active(in2(n_gates+1-b,a)) = 1
-		  end if
+          do b = 1,n_gates
+             if(active(n_gates+1-b).gt.0) then
+                    active(in1(n_gates+1-b,a)) = 1
+                        active(in2(n_gates+1-b,a)) = 1
+                  end if
       end do
    end do
    
    if(sum(active(1:n_inp)).lt.n_inp) then
       qual(a) = 0.0
-	  
+          
    !else
       !if (sum(active(n_inp+1:n_gates-1)) /= n_gates_nom) then
-	  !   qual(a) = 0.0
-	  !end if
+          !   qual(a) = 0.0
+          !end if
    end if 
 end do
 
@@ -151,116 +151,116 @@ in2(:,1:L) = in2(:,n_pop-L+1:n_pop)
 
 !mutate nets
 do a = 1,n_pop-L
-	call random_number(rand)
-	gate1 = floor(rand(1)*(n_gates-n_inp))+1+n_inp
-	gate2 = floor(rand(2)*(n_gates))+1
-	
-	if (rand(3).lt.0.5) then
-		in1(gate1,a) = gate2
-	else
-		in2(gate1,a) = gate2
-	end if
+        call random_number(rand)
+        gate1 = floor(rand(1)*(n_gates-n_inp))+1+n_inp
+        gate2 = floor(rand(2)*(n_gates))+1
+        
+        if (rand(3).lt.0.5) then
+                in1(gate1,a) = gate2
+        else
+                in2(gate1,a) = gate2
+        end if
 end do
 
 !end main loop
 end do
 
-contains 
-
-function modularity(A)
-	k = sum(A)
-	m = real(sum(k))
-	B = (/ (/ 1,2 /),(/ 1,2 /) /)
-	g = 1
-
-	
-	do i = 1,size(k)
-		do j = 1,size(k)
-			B(i,j) = A(i,j)-(k(i)*k(j)/(2*m))
-		end do
-	end do
-	
-	n_groups = 1
-	n_current = 1
-	Q = 0
-	
-	!endless loop
-	do
-	
-	
-		!binary indexing. how is this best done in fortran? pack?
-		take = find(g==n_current)
-		Bg = B(take,take) - diag(sum(B(take,take),2))
-		
-		call dQ(Bg,k,m,delta_Q,s)
-		
-		if (delta_Q > 0.0001) then
-			take_tmp = take(find(s == 1))
-			take2 = take(find(s == -1))
-			take = take_tmp
-			n_groups = n_groups + 1
-			Q = Q + delta_Q
-		else
-			take = 1,size(A,1)
-			n_current = n_current + 1
-			if (n_current > n_groups) then exit
-		end if
-		
-	end do
-	
-	
-	
-	contains subroutine dQ(B,k,m,deltaQ,s)
-    	!this needs to return the eigenvalues in beta and the leading eigenvector in u
-    	call eigen(B,u,beta)
-    	s = sign(u)
-    	
-    	ts = s
-        used = 0 !same size as s
-        do i = 1,size(B,1)
-            summe = summe + beta(i)*(s*u(:,i))^2
-        end do
-    	
-    	tsumme = summe
-    	!fine tuning
-    	
-    	do i = 1,size(s,1)
-
-      !      do j = find(used == 0)
-      		forall(j=1:size(used),used==0)
-                tts = ts
-                tts(j) = -1*tts(j)
-          
-                
-                ttsumme = 0
-
-                do i = 1,size(B,1)
-                    ttsumme = ttsumme + beta(i)*(tts'*u(:,i))^2
-                end do
-
-                if (ttsumme > tsumme) then
-                    
-                    ts = tts
-                    tsumme = ttsumme
-                    
-                end if
-            end forall
-            !used(find(s /= ts)) = 1
-            where (s /= ts) used = 1
-            
-            s = ts
-            if (summe >= tsumme) then
-                break
-            end if
-            summe = tsumme
-
-      end do
-
-        delta_Q = summe/(4*m)
-    	
-	end subroutine dQ
-
-end function modularity
+!contains 
+!
+!function modularity(A)
+!        k = sum(A)
+!        m = real(sum(k))
+!        B = (/ (/ 1,2 /),(/ 1,2 /) /)
+!        g = 1
+!
+!        
+!        do i = 1,size(k)
+!                do j = 1,size(k)
+!                        B(i,j) = A(i,j)-(k(i)*k(j)/(2*m))
+!                end do
+!        end do
+!        
+!        n_groups = 1
+!        n_current = 1
+!        Q = 0
+!        
+!        !endless loop
+!        do
+!        
+!        
+!                !binary indexing. how is this best done in fortran? pack?
+!                take = find(g==n_current)
+!                Bg = B(take,take) - diag(sum(B(take,take),2))
+!                
+!                call dQ(Bg,k,m,delta_Q,s)
+!                
+!                if (delta_Q > 0.0001) then
+!                        take_tmp = take(find(s == 1))
+!                        take2 = take(find(s == -1))
+!                        take = take_tmp
+!                        n_groups = n_groups + 1
+!                        Q = Q + delta_Q
+!                else
+!                        take = 1,size(A,1)
+!                        n_current = n_current + 1
+!                        if (n_current > n_groups) then exit
+!                end if
+!                
+!        end do
+!        
+!        
+!        
+!        contains subroutine dQ(B,k,m,deltaQ,s)
+!        !this needs to return the eigenvalues in beta and the leading eigenvector in u
+!        call eigen(B,u,beta)
+!        s = sign(u)
+!        
+!        ts = s
+!        used = 0 !same size as s
+!        do i = 1,size(B,1)
+!            summe = summe + beta(i)*(s*u(:,i))^2
+!        end do
+!        
+!        tsumme = summe
+!        !fine tuning
+!        
+!        do i = 1,size(s,1)
+!
+!      !      do j = find(used == 0)
+!                forall(j=1:size(used),used==0)
+!                tts = ts
+!                tts(j) = -1*tts(j)
+!          
+!                
+!                ttsumme = 0
+!
+!                do i = 1,size(B,1)
+!                    ttsumme = ttsumme + beta(i)*(tts*u(:,i))^2
+!                end do
+!
+!                if (ttsumme > tsumme) then
+!                    
+!                    ts = tts
+!                    tsumme = ttsumme
+!                    
+!                end if
+!            end forall
+!            !used(find(s /= ts)) = 1
+!            where (s /= ts) used = 1
+!            
+!            s = ts
+!            if (summe >= tsumme) then
+!                break
+!            end if
+!            summe = tsumme
+!
+!      end do
+!
+!        delta_Q = summe/(4*m)
+!        
+!        end subroutine dQ
+!
+!end function modularity
 
 
 end program main
