@@ -4,7 +4,7 @@ use nr,only:indexx
 implicit none
 
 !integer,parameter :: n_pop=1000,L=300,epoch=100,n_gen=100000,n_gates=30,n_gates_nom=20,n_transient=5,n_inp=4
-integer,parameter :: n_pop=1000,L=300,epoch=100,n_gen=100000,n_gates=50,n_gates_nom=30,n_transient=5,n_inp=8
+integer,parameter :: n_pop=1000,L=300,epoch=100,n_gen=100000,n_gates=50,n_gates_nom=30,n_transient=15,n_inp=8
 integer :: goal,gen,gate1,gate2
 integer :: a,b,c
 integer,dimension(n_inp , 2**n_inp) :: inp = 0
@@ -13,7 +13,7 @@ integer,dimension(n_gates,n_pop) :: x=0,y=0
 integer,dimension( 2**n_inp) :: out = 0
 integer,dimension( n_pop ) :: order = 0
 integer,dimension(n_gates , n_pop):: in1=0 , in2=0
-integer,dimension(n_gates , n_pop) :: state=0
+integer,dimension(n_gates , n_pop) :: state=0,oldstate=0
 real, dimension(n_pop) :: qual = 0.0
 real,dimension(4) :: rand
 logical :: again = .true.
@@ -89,10 +89,12 @@ qual = 0
 !evaluate nets
 do c = 1,2**n_inp
     state = 0
+    oldstate = 0
         x = 0
         y = 0
         do a = 1,n_transient
                 state(1:n_inp,:) = spread(inp(:,c),ncopies=n_pop,dim=2)
+                oldstate = state
                 do b = 1,n_pop
                         x(n_inp+1:n_gates,b) = state(in1(n_inp+1:n_gates,b),b)
                         y(n_inp+1:n_gates,b) = state(in2(n_inp+1:n_gates,b),b)
@@ -100,8 +102,9 @@ do c = 1,2**n_inp
                 state(n_inp+1:n_gates,:) = 1 - x(n_inp+1:n_gates,:)*y(n_inp+1:n_gates,:)
         end do
         
+        !print*,sum(1-(IEOR(state,oldstate)),dim=1)/4
 
-        qual = qual +  NOT(IEOR(state(n_gates,:),spread(out(c),ncopies=n_pop,dim=1)))+2
+        qual = qual + (1 - (IEOR(state(n_gates,:),spread(out(c),ncopies=n_pop,dim=1))))*sum(1-(IEOR(state,oldstate)),dim=1)/n_gates
                 
 end do
 !print*,qual
