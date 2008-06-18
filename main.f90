@@ -169,54 +169,97 @@ end do
 !end main loop
 end do
 
-!contains 
-!
-!function modularity(A)
-!        k = sum(A)
-!        m = real(sum(k))
-!        B = (/ (/ 1,2 /),(/ 1,2 /) /)
-!        g = 1
-!
+contains 
+
+function diag(a) result(diagonal)
+      integer :: i
+      real,dimension(:) :: a
+      real,dimension(size(a),size(a)) :: diagonal
+      diagonal = 0
+      do i = 1,size(a)
+         diagonal(i,i) = a(i)
+      end do
+      ! return
+end function diag
+
+
+function find(a) result(found)
+      integer i,j 
+      logical,dimension(:) :: a
+      integer,dimension(count(a)) :: found
+      
+      j = 1
+      do i = 1,size(a)
+        if (a(i)) then
+            found(j) = i
+            j = j + 1
+        end if
+      end do
+      ! return
+end function find
+
+real function modularity(A)
+    !    private :: B,k
+        real::m,Q,delta_Q
+        integer:: i,j,n_groups,n_current
+        real,allocatable,dimension(:) :: g,s
+        integer,dimension(:,:):: A
+        integer,allocatable,dimension(:):: take,take_tmp,take2
+        real,dimension(size(A,dim=1)):: k
+        real,dimension(size(k),size(k)):: B
+        real,allocatable,dimension(:,:):: Bg
+        k = sum(A,dim=1)
+        m = real(sum(k))
+        modularity = 0
+        !B = (/ (/ 1,2 /),(/ 1,2 /) /)
+        !g = 1
+
+        
+        do i = 1,size(k)
+                do j = 1,size(k)
+                        print *,B(i,j)
+                        B(i,j) = A(i,j)-(k(i)*k(j)/(2*m))
+                end do
+        end do
+        
+        n_groups = 1
+        n_current = 1
+        Q = 0
 !        
-!        do i = 1,size(k)
-!                do j = 1,size(k)
-!                        B(i,j) = A(i,j)-(k(i)*k(j)/(2*m))
-!                end do
-!        end do
-!        
-!        n_groups = 1
-!        n_current = 1
-!        Q = 0
-!        
-!        !endless loop
-!        do
-!        
-!        
-!                !binary indexing. how is this best done in fortran? pack?
-!                take = find(g==n_current)
-!                Bg = B(take,take) - diag(sum(B(take,take),2))
-!                
-!                call dQ(Bg,k,m,delta_Q,s)
-!                
-!                if (delta_Q > 0.0001) then
-!                        take_tmp = take(find(s == 1))
-!                        take2 = take(find(s == -1))
-!                        take = take_tmp
-!                        n_groups = n_groups + 1
-!                        Q = Q + delta_Q
-!                else
-!                        take = 1,size(A,1)
-!                        n_current = n_current + 1
-!                        if (n_current > n_groups) then exit
-!                end if
-!                
-!        end do
-!        
-!        
-!        
+        !endless loop
+        do 
+                !binary indexing. how is this best done in fortran? pack?
+                take = find(g==n_current)
+                Bg = B(take,take) - diag(sum(B(take,take),2))
+                
+                !call dQ(Bg,k,m,delta_Q,s)
+                
+                if (delta_Q > 0.0001) then
+                        take_tmp = take(find(s == 1))
+                        take2 = take(find(s == -1))
+                        take = take_tmp
+                        n_groups = n_groups + 1
+                        Q = Q + delta_Q
+                else
+                        !take = 1,size(A,1)
+                        n_current = n_current + 1
+                        if (n_current > n_groups) then 
+                                exit
+                        end if
+                end if
+                
+        end do
+        
+        
 !        contains subroutine dQ(B,k,m,deltaQ,s)
 !        !this needs to return the eigenvalues in beta and the leading eigenvector in u
-!        call eigen(B,u,beta)
+!        !call eigen(B,u,beta)
+!        
+!        !shitty hack for testing
+!        s = diag(B)
+!        u = s
+!
+!
 !        s = sign(u)
 !        
 !        ts = s
@@ -264,7 +307,7 @@ end do
 !        
 !        end subroutine dQ
 !
-!end function modularity
-
+end function modularity
+!
 
 end program main
