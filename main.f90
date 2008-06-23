@@ -1,13 +1,13 @@
 program main
 
-use nr,only:indexx,jacobi
+use nr,only:indexx,jacobi,gaussj
       
 implicit none
 
-integer,parameter :: n_pop=1000,L=300,epoch=100,n_gen=100000,n_gates=30,n_gates_nom=20,n_transient=5,n_inp=4
+integer,parameter :: n_pop=1000,L=300,n_gen=10000,run_thresh=6,n_gates=16,n_gates_nom=10,n_transient=5,n_inp=4
 !integer,parameter :: n_pop=1000,L=300,epoch=100,n_gen=100000,n_gates=50,n_gates_nom=30,n_transient=15,n_inp=8
 integer :: goal,gen,gate1,gate2
-integer :: a,b,c
+integer :: a,b,c,run=0
 integer,dimension(n_inp , 2**n_inp) :: inp = 0
 integer,dimension(n_gates) :: active = 0
 integer,dimension(n_gates,n_gates) :: adj = 0
@@ -16,10 +16,11 @@ integer,dimension( 2**n_inp) :: out = 0
 integer,dimension( n_pop ) :: order = 0
 integer,dimension(n_gates , n_pop):: in1=0 , in2=0
 integer,dimension(n_gates , n_pop) :: state=0,oldstate=0
-real, dimension(n_pop) :: qual = 0.0
+real, dimension(n_pop) :: qual = 0.0,wire_list=0.0,mod_list=0.0
 real,dimension(4) :: rand
 logical :: again = .true.
-integer old_sum
+integer :: old_sum,epoch=200
+real :: b_wire=0
 CALL RANDOM_SEED
 !CALL RANDOM_SEED 
 !CALL RANDOM_SEED(put = (/ 123, 222 /))
@@ -68,11 +69,11 @@ do while (again)
    if(sum(active(1:n_inp)) < n_inp) then
       again = .true.
    else
-      !if (sum(active(n_inp+1:n_gates-1)) /= n_gates_nom) then
-          !   again = .true.
-      !else
+      if (sum(active(n_inp+1:n_gates-1)) /= n_gates_nom) then
+             again = .true.
+      else
          again = .false.
-          !end if
+      end if
    end if 
 
 end do
@@ -112,6 +113,8 @@ end do
 !print*,qual
 !pause
 !disqualify nets with wrong number of gates, unconnected inputs
+wire_list = 1
+
 do a = 1,n_pop
    active = 0
    old_sum = 0
@@ -130,15 +133,15 @@ do a = 1,n_pop
    if(sum(active(1:n_inp)).lt.n_inp) then
       qual(a) = 0.0
           
-   !else
-      !if (sum(active(n_inp+1:n_gates-1)) /= n_gates_nom) then
-          !   qual(a) = 0.0
-          !end if
+   else
+      if (sum(active(n_inp+1:n_gates-1)) /= n_gates_nom) then
+             qual(a) = 0.0
+      end if
    end if 
-end do
 
+ !end do
+ !do a = 1,n_pop
 
-do a = 1,n_pop
    adj = 0
    do b = 1,n_gates
      adj(b,in1(b,a)) = 1
@@ -147,18 +150,54 @@ do a = 1,n_pop
      adj(in2(b,a),b) = 1
      
    end do
-   if (gen>10) then 
-           print *, modularity(adj)
-   endif
-end do
-   
 
+   if ((b_wire>0).and.(qual(a)>0) ) then 
+           !print *,wire(adj,active)
+           wire_list(a) = wire(adj,active)
+           qual(a) = qual(a) - b_wire*wire_list(a)
+   endif
+
+      
+   
+   
+   
+end do
+
+!take measurements at regular intervals
+
+
+if (mod(gen,epoch)==0) then
+    !measure modularity
+    do a = 1,n_pop
+    adj = 0
+      do b = 1,n_gates
+         adj(b,in1(b,a)) = 1
+         adj(b,in2(b,a)) = 1
+         adj(in1(b,a),b) = 1
+         adj(in2(b,a),b) = 1
+       end do
+    mod_list(a) = modularity(adj)
+    end do
+
+
+    !change environment on certain conditions
+    if(maxval(qual)/2.**n_inp == 1) then
+        epoch = 20
+        run = run + 1
+        if (run>run_thresh) then
+           b_wire = 0.1
+        endif
+    endif
+
+endif
 
 !sort nets by quality
 
 call indexx(qual,order)
-print*,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop)
+print*,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop,sum(mod_list)/n_pop
+
 !pause
+
 in1(:,:) = in1(:,order)
 in2(:,:) = in2(:,order)
 !print*,qual
@@ -306,15 +345,9 @@ end function modularity
         maxind = maxloc(beta,dim=1)
         s = sign(1.0,u(:,maxind))
 
-        !shitty hack for testing
-        !s = 1 ! diag(B)
         delta_Q = 0.0
         
-!        u = s
-!
-!
-!        s = sign(1.0,u)
-       summe = 0 
+        summe = 0 
       !  ts = s
         !used = 0 !same size as s
         do i = 1,size(B,1)
@@ -360,6 +393,69 @@ end function modularity
         
         end subroutine dQ
 
+real function wire(A,active)
+     integer,dimension(:,:) :: A
+     integer,dimension(:) :: active
+     integer :: i,j,n_active
+     integer,dimension(count(active>0)) :: choose
+     real,dimension(count(active>0)-n_inp-1,2) :: pos 
+     integer,dimension(count(active>0)-n_inp-1,count(active>0)-n_inp-1) :: Q
+     integer,dimension(count(active>0)-n_inp-1,n_inp+1) :: B
+     real,dimension (count(active>0)-n_inp-1,count(active>0)-n_inp-1) :: Q_inv
+     real,dimension (n_inp+1,2) :: s
+     !uses alpha = 1 throughout
 
+     n_active =  count(active>0) 
+     choose = find(active>0)
+     Q = -A(choose(n_inp+1:n_active-1),choose(n_inp+1:n_active-1))
+     
+!     do j = 1,size(Q,1)
+!        print *,Q(j,:),"\n"
+!     end do
+!     print *,"------\n"
+     
+     do i = 1,n_active-n_inp-1
+         Q(i,i) = Q(i,i) - sum(Q(i,:))
+     end do
+
+!     do j = 1,size(Q,1)
+!        print *,Q(j,:),"\n"
+!     end do
+!     print *,"------\n"
+
+     do i = 1,n_active-n_inp-1
+         B(i,1:n_inp) = A(choose(i+n_inp),1:n_inp)
+         B(i,n_inp+1) = A(choose(i+n_inp),n_gates)
+         Q(i,i) = Q(i,i) + sum(B(i,:))
+     end do
+     Q_inv = real(Q)
+    
+     s = 0
+     do i = 1,n_inp
+        s(i,1) = real(i-1)/(n_inp-1)
+     end do
+     s(n_inp+1,1) = 0.5
+     s(n_inp+1,2) = 1.0
+
+
+     pos(:,1) = matmul(B,s(:,1))
+     pos(:,2) = matmul(B,s(:,2))
+!     do j = 1,size(Q,1)
+!        print *,Q(j,:),"\n"
+!     end do
+!        
+!     print *,"------\n"
+     call gaussj(Q_inv,pos)
+!     print *,Q_inv
+     wire = 0
+
+     do i = n_inp+1,n_active-1
+     do j = n_inp+1,n_active-1
+     
+     wire = wire + 0.5*A(choose(i),choose(j))*((pos(i-n_inp,1)-pos(j-n_inp,1))**2 + (pos(i-n_inp,2)-pos(j-n_inp,2))**2 )
+     end do
+     end do
+     
+end function wire
 
 end program main
