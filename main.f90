@@ -1,14 +1,16 @@
 program main
 
-use nr,only:indexx
+use nr,only:indexx,jacobi
+      
 implicit none
 
-!integer,parameter :: n_pop=1000,L=300,epoch=100,n_gen=100000,n_gates=30,n_gates_nom=20,n_transient=5,n_inp=4
-integer,parameter :: n_pop=1000,L=300,epoch=100,n_gen=100000,n_gates=50,n_gates_nom=30,n_transient=15,n_inp=8
+integer,parameter :: n_pop=1000,L=300,epoch=100,n_gen=100000,n_gates=30,n_gates_nom=20,n_transient=5,n_inp=4
+!integer,parameter :: n_pop=1000,L=300,epoch=100,n_gen=100000,n_gates=50,n_gates_nom=30,n_transient=15,n_inp=8
 integer :: goal,gen,gate1,gate2
 integer :: a,b,c
 integer,dimension(n_inp , 2**n_inp) :: inp = 0
 integer,dimension(n_gates) :: active = 0
+integer,dimension(n_gates,n_gates) :: adj = 0
 integer,dimension(n_gates,n_pop) :: x=0,y=0
 integer,dimension( 2**n_inp) :: out = 0
 integer,dimension( n_pop ) :: order = 0
@@ -29,8 +31,8 @@ do a = 1,2**n_inp
    end do
 end do
 
-out = iand(ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:))),ior(ieor(inp(5,:),inp(6,:)),ieor(inp(7,:),inp(8,:))))
-!out = iand(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:)))
+!out = iand(ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:))),ior(ieor(inp(5,:),inp(6,:)),ieor(inp(7,:),inp(8,:))))
+out = iand(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:)))
 !out(5) = 0
 print*, out 
 !pause
@@ -136,6 +138,21 @@ do a = 1,n_pop
 end do
 
 
+do a = 1,n_pop
+   adj = 0
+   do b = 1,n_gates
+     adj(b,in1(b,a)) = 1
+     adj(b,in2(b,a)) = 1
+     adj(in1(b,a),b) = 1
+     adj(in2(b,a),b) = 1
+     
+   end do
+   if (gen>10) then 
+           print *, modularity(adj)
+   endif
+end do
+   
+
 
 !sort nets by quality
 
@@ -202,22 +219,22 @@ real function modularity(A)
     !    private :: B,k
         real::m,Q,delta_Q
         integer:: i,j,n_groups,n_current
-        real,allocatable,dimension(:) :: g,s
+        real,allocatable,dimension(:) :: s
         integer,dimension(:,:):: A
         integer,allocatable,dimension(:):: take,take_tmp,take2
-        real,dimension(size(A,dim=1)):: k
+        real,dimension(size(A,dim=1)):: k,g
         real,dimension(size(k),size(k)):: B
         real,allocatable,dimension(:,:):: Bg
         k = sum(A,dim=1)
-        m = real(sum(k))
+        m = real(sum(k))/2.0
         modularity = 0
         !B = (/ (/ 1,2 /),(/ 1,2 /) /)
-        !g = 1
-
+        g = 1
+        
         
         do i = 1,size(k)
                 do j = 1,size(k)
-                        print *,B(i,j)
+                        !print *,B(i,j)
                         B(i,j) = A(i,j)-(k(i)*k(j)/(2*m))
                 end do
         end do
@@ -229,16 +246,34 @@ real function modularity(A)
         !endless loop
         do 
                 !binary indexing. how is this best done in fortran? pack?
+                if (allocated(take)) then 
+                        deallocate(take)
+                        deallocate(Bg)
+                        deallocate(s)
+                 endif
+                        
+                allocate(take(count(g==n_current)))
+                allocate(s(count(g==n_current)))
+                allocate(Bg(count(g==n_current),count(g==n_current)))
                 take = find(g==n_current)
+                !print*,g
+                !print*,"bla"
                 Bg = B(take,take) - diag(sum(B(take,take),2))
-                
-                !call dQ(Bg,k,m,delta_Q,s)
+                 
+                call dQ(Bg,k,m,delta_Q,s)
                 
                 if (delta_Q > 0.0001) then
-                        take_tmp = take(find(s == 1))
-                        take2 = take(find(s == -1))
-                        take = take_tmp
+!                        if (allocated(take_tmp) then
+!                                deallocate(take_tmp)
+!                        endif
+!                        allocate(take_tmp(count(s==1)))
+!                        take_tmp = take(find(s == 1))
+                        !take2 = take(find(s == -1))
+                        
+               
+   
                         n_groups = n_groups + 1
+                        g(take(find(s == 1))) = n_groups
                         Q = Q + delta_Q
                 else
                         !take = 1,size(A,1)
@@ -249,28 +284,46 @@ real function modularity(A)
                 end if
                 
         end do
+       modularity = Q 
+end function modularity
+        
+        subroutine dQ(B,k,m,delta_Q,s)
         
         
-!        contains subroutine dQ(B,k,m,deltaQ,s)
-!        !this needs to return the eigenvalues in beta and the leading eigenvector in u
-!        !call eigen(B,u,beta)
-!        
-!        !shitty hack for testing
-!        s = diag(B)
+        integer,allocatable,dimension(:) :: t,ts,tts,used
+        integer :: i,j,ii,nrot,maxind
+        real,dimension(:):: k
+        
+        real,dimension(:,:) :: B
+        
+        real,dimension(size(B,1),size(B,1)) :: u
+        real :: m,delta_q,summe,tsumme
+        real,dimension(size(B,1)) :: beta,s
+
+        !this needs to return the eigenvalues in beta and the leading eigenvector in u
+        call jacobi(B,beta,u,nrot)
+        
+        maxind = maxloc(beta,dim=1)
+        s = sign(1.0,u(:,maxind))
+
+        !shitty hack for testing
+        !s = 1 ! diag(B)
+        delta_Q = 0.0
+        
 !        u = s
 !
 !
-!        s = sign(u)
-!        
-!        ts = s
-!        used = 0 !same size as s
-!        do i = 1,size(B,1)
-!            summe = summe + beta(i)*(s*u(:,i))^2
-!        end do
-!        
-!        tsumme = summe
-!        !fine tuning
-!        
+!        s = sign(1.0,u)
+       summe = 0 
+      !  ts = s
+        !used = 0 !same size as s
+        do i = 1,size(B,1)
+        summe = summe + beta(i)*(dot_product(s,u(:,i)))**2
+        end do
+        
+        tsumme = summe
+        !fine tuning
+        
 !        do i = 1,size(s,1)
 !
 !      !      do j = find(used == 0)
@@ -281,8 +334,8 @@ real function modularity(A)
 !                
 !                ttsumme = 0
 !
-!                do i = 1,size(B,1)
-!                    ttsumme = ttsumme + beta(i)*(tts*u(:,i))^2
+!                do ii = 1,size(B,1)
+!                    ttsumme = ttsumme + beta(ii)*(tts*u(:,ii))^2
 !                end do
 !
 !                if (ttsumme > tsumme) then
@@ -302,12 +355,11 @@ real function modularity(A)
 !            summe = tsumme
 !
 !      end do
-!
-!        delta_Q = summe/(4*m)
-!        
-!        end subroutine dQ
-!
-end function modularity
-!
+
+        delta_Q = summe/(4*m)
+        
+        end subroutine dQ
+
+
 
 end program main
