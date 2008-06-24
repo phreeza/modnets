@@ -4,8 +4,8 @@ use nr,only:indexx,jacobi,gaussj
       
 implicit none
 
-integer,parameter :: n_pop=1000,L=300,n_gen=10000,run_thresh=6,n_gates=16,n_gates_nom=10,n_transient=5,n_inp=4
-!integer,parameter :: n_pop=1000,L=300,epoch=100,n_gen=100000,n_gates=50,n_gates_nom=30,n_transient=15,n_inp=8
+!integer,parameter :: n_pop=1000,L=300,n_gen=10000,run_thresh=6,n_gates=16,n_gates_nom=10,n_transient=5,n_inp=4
+integer,parameter :: n_pop=1000,L=300,n_gen=100000,run_thresh=6,n_gates=50,n_gates_nom=30,n_transient=15,n_inp=8
 integer :: goal,gen,gate1,gate2
 integer :: a,b,c,run=0
 integer,dimension(n_inp , 2**n_inp) :: inp = 0
@@ -26,14 +26,16 @@ CALL RANDOM_SEED
 !CALL RANDOM_SEED(put = (/ 123, 222 /))
 !call random_number(rand)
 
+
+
 do a = 1,2**n_inp
    do b = 1,n_inp
       inp(b,a)=transfer(btest(a-1,b),0)
    end do
 end do
 
-!out = iand(ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:))),ior(ieor(inp(5,:),inp(6,:)),ieor(inp(7,:),inp(8,:))))
-out = iand(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:)))
+out = iand(ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:))),ior(ieor(inp(5,:),inp(6,:)),ieor(inp(7,:),inp(8,:))))
+!out = ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:)))
 !out(5) = 0
 print*, out 
 !pause
@@ -113,7 +115,6 @@ end do
 !print*,qual
 !pause
 !disqualify nets with wrong number of gates, unconnected inputs
-wire_list = 1
 
 do a = 1,n_pop
    active = 0
@@ -133,10 +134,10 @@ do a = 1,n_pop
    if(sum(active(1:n_inp)).lt.n_inp) then
       qual(a) = 0.0
           
-   else
-      if (sum(active(n_inp+1:n_gates-1)) /= n_gates_nom) then
-             qual(a) = 0.0
-      end if
+!   else
+!      if (sum(active(n_inp+1:n_gates-1)) /= n_gates_nom) then
+!             qual(a) = 0.0
+!      end if
    end if 
 
  !end do
@@ -166,9 +167,24 @@ end do
 !take measurements at regular intervals
 
 
-if (mod(gen,epoch)==0) then
+if (mod(gen,epoch)==1) then
     !measure modularity
+   
     do a = 1,n_pop
+    active = 0
+    old_sum = 0
+    active(n_gates) = 1
+   
+    do while (sum(active).gt.old_sum)
+      old_sum = sum(active)
+          do b = 1,n_gates
+             if(active(n_gates+1-b).gt.0) then
+                 active(in1(n_gates+1-b,a)) = 1
+                 active(in2(n_gates+1-b,a)) = 1
+             end if
+      end do
+    end do
+    
     adj = 0
       do b = 1,n_gates
          adj(b,in1(b,a)) = 1
@@ -176,6 +192,12 @@ if (mod(gen,epoch)==0) then
          adj(in1(b,a),b) = 1
          adj(in2(b,a),b) = 1
        end do
+
+    if ((qual(a)>0)) then 
+       wire_list(a) = wire(adj,active)
+    else
+       wire_list(a) = 1
+    endif    
     mod_list(a) = modularity(adj)
     end do
 
@@ -189,6 +211,10 @@ if (mod(gen,epoch)==0) then
         endif
     endif
 
+
+    OPEN(1, FILE="modularity.dat",position='append')  
+    WRITE (1,*) gen-1,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop,sum(mod_list)/n_pop
+close(1)
 endif
 
 !sort nets by quality
@@ -329,15 +355,15 @@ end function modularity
         subroutine dQ(B,k,m,delta_Q,s)
         
         
-        integer,allocatable,dimension(:) :: t,ts,tts,used
         integer :: i,j,ii,nrot,maxind
         real,dimension(:):: k
         
         real,dimension(:,:) :: B
         
         real,dimension(size(B,1),size(B,1)) :: u
-        real :: m,delta_q,summe,tsumme
-        real,dimension(size(B,1)) :: beta,s
+        real :: m,delta_q,summe,tsumme,ttsumme
+        real,dimension(size(B,1)) :: beta,s,used,t,ts,tts
+
 
         !this needs to return the eigenvalues in beta and the leading eigenvector in u
         call jacobi(B,beta,u,nrot)
@@ -348,8 +374,8 @@ end function modularity
         delta_Q = 0.0
         
         summe = 0 
-      !  ts = s
-        !used = 0 !same size as s
+        ts = s
+        used = 0 !same size as s
         do i = 1,size(B,1)
         summe = summe + beta(i)*(dot_product(s,u(:,i)))**2
         end do
@@ -357,37 +383,42 @@ end function modularity
         tsumme = summe
         !fine tuning
         
-!        do i = 1,size(s,1)
-!
-!      !      do j = find(used == 0)
-!                forall(j=1:size(used),used==0)
-!                tts = ts
-!                tts(j) = -1*tts(j)
-!          
-!                
-!                ttsumme = 0
-!
-!                do ii = 1,size(B,1)
-!                    ttsumme = ttsumme + beta(ii)*(tts*u(:,ii))^2
-!                end do
-!
-!                if (ttsumme > tsumme) then
-!                    
-!                    ts = tts
-!                    tsumme = ttsumme
-!                    
-!                end if
-!            end forall
-!            !used(find(s /= ts)) = 1
-!            where (s /= ts) used = 1
-!            
-!            s = ts
-!            if (summe >= tsumme) then
-!                break
-!            end if
-!            summe = tsumme
-!
-!      end do
+        do i = 1,size(s,1)
+
+            do j = 1,size(used)
+            if (used(j)==0) then
+              !  forall(j=1:size(used),used==0)
+                tts = ts
+                tts(j) = -1*tts(j)
+          
+                
+                ttsumme = 0
+!                print *, tts
+!                print *,u(:,ii)
+!                pause
+                do ii = 1,size(B,1)
+                ttsumme = ttsumme + beta(ii)*(dot_product(tts,u(:,ii)))**2
+                end do
+
+                if (ttsumme > tsumme) then
+                    
+                    ts = tts
+                    tsumme = ttsumme
+                    
+                end if
+             endif
+             end do
+            !end forall
+            !used(find(s /= ts)) = 1
+            where (s /= ts) used = 1
+            
+            s = ts
+            if (summe >= tsumme) then
+                exit
+            end if
+            summe = tsumme
+
+      end do
 
         delta_Q = summe/(4*m)
         
@@ -454,8 +485,11 @@ real function wire(A,active)
      
      wire = wire + 0.5*A(choose(i),choose(j))*((pos(i-n_inp,1)-pos(j-n_inp,1))**2 + (pos(i-n_inp,2)-pos(j-n_inp,2))**2 )
      end do
+
+     do j = 1,n_inp+1
+     wire = wire + B(i-n_inp,j)*((pos(i-n_inp,1)-s(j,1))**2 + (pos(i-n_inp,2)-s(j,2))**2 )
      end do
-     
+     end do
 end function wire
 
 end program main
