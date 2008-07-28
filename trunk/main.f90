@@ -4,8 +4,8 @@ use nr,only:indexx,jacobi,gaussj
       
 implicit none
 
-!integer,parameter :: n_pop=1000,L=300,n_gen=10000,run_thresh=6,n_gates=16,n_gates_nom=10,n_transient=5,n_inp=4
-integer,parameter :: n_pop=1000,L=300,n_gen=100000,run_thresh=6,n_gates=50,n_gates_nom=30,n_transient=15,n_inp=8
+integer,parameter :: n_pop=1000,L=300,n_gen=10000,run_thresh=6,n_gates=16,n_gates_nom=10,n_transient=5,n_inp=4
+!integer,parameter :: n_pop=1000,L=300,n_gen=100000,run_thresh=6,n_gates=50,n_gates_nom=30,n_transient=15,n_inp=8
 integer :: goal,gen,gate1,gate2
 integer :: a,b,c,run=0
 integer,dimension(n_inp , 2**n_inp) :: inp = 0
@@ -21,7 +21,17 @@ real,dimension(4) :: rand
 logical :: again = .true.
 integer :: old_sum,epoch=200
 real :: b_wire=0
+
+character(len=8) ::  date
+character(len=10) ::  time
+character(len=10) ::  zone
+character(len=100) :: filename
+
+call date_and_time(date, time, zone)
+filename = "modularity-"//date//"-"//time(1:6)//".dat"
+
 CALL RANDOM_SEED
+
 !CALL RANDOM_SEED 
 !CALL RANDOM_SEED(put = (/ 123, 222 /))
 !call random_number(rand)
@@ -34,8 +44,8 @@ do a = 1,2**n_inp
    end do
 end do
 
-out = iand(ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:))),ior(ieor(inp(5,:),inp(6,:)),ieor(inp(7,:),inp(8,:))))
-!out = ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:)))
+!out = iand(ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:))),ior(ieor(inp(5,:),inp(6,:)),ieor(inp(7,:),inp(8,:))))
+out = ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:)))
 !out(5) = 0
 print*, out 
 !pause
@@ -212,7 +222,7 @@ if (mod(gen,epoch)==1) then
     endif
 
 
-    OPEN(1, FILE="modularity.dat",position='append')  
+    OPEN(1, FILE=filename,position='append')  
     WRITE (1,*) gen-1,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop,sum(mod_list)/n_pop
 close(1)
 endif
