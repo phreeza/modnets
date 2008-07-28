@@ -4,10 +4,10 @@ use nr,only:indexx,jacobi,gaussj
       
 implicit none
 
-integer,parameter :: n_pop=1000,L=300,n_gen=10000,run_thresh=6,n_gates=16,n_gates_nom=10,n_transient=5,n_inp=4
+integer,parameter :: n_pop=1000,L=300,n_gen=10000,run_thresh=6,n_gates=20,n_gates_nom=12,n_transient=5,n_inp=4
 !integer,parameter :: n_pop=1000,L=300,n_gen=100000,run_thresh=6,n_gates=50,n_gates_nom=30,n_transient=15,n_inp=8
 integer :: goal,gen,gate1,gate2
-integer :: a,b,c,run=0
+integer :: a,b,c,run=0,max_qual=0
 integer,dimension(n_inp , 2**n_inp) :: inp = 0
 integer,dimension(n_gates) :: active = 0
 integer,dimension(n_gates,n_gates) :: adj = 0
@@ -45,7 +45,7 @@ do a = 1,2**n_inp
 end do
 
 !out = iand(ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:))),ior(ieor(inp(5,:),inp(6,:)),ieor(inp(7,:),inp(8,:))))
-out = ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:)))
+out = iand(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:)))
 !out(5) = 0
 print*, out 
 !pause
@@ -144,12 +144,12 @@ do a = 1,n_pop
    if(sum(active(1:n_inp)).lt.n_inp) then
       qual(a) = 0.0
           
-!   else
-!      if (sum(active(n_inp+1:n_gates-1)) /= n_gates_nom) then
-!             qual(a) = 0.0
-!      end if
+   else
+      if (sum(active(n_inp+1:n_gates-1)) /= n_gates_nom) then
+             qual(a) = 0.0
+      end if
    end if 
-
+ max_qual = maxval(qual)
  !end do
  !do a = 1,n_pop
 
@@ -173,7 +173,6 @@ do a = 1,n_pop
    
    
 end do
-
 !take measurements at regular intervals
 
 
@@ -213,11 +212,18 @@ if (mod(gen,epoch)==1) then
 
 
     !change environment on certain conditions
-    if(maxval(qual)/2.**n_inp == 1) then
+    if(maxval(qual)/2.**n_inp >= .99) then
         epoch = 20
         run = run + 1
+        print *,run
         if (run>run_thresh) then
            b_wire = 0.1
+        endif
+        if (run>(run_thresh*2)) then
+           b_wire = 0.0
+        endif
+        if (run>(run_thresh*3)) then
+           exit
         endif
     endif
 
