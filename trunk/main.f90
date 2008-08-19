@@ -20,7 +20,7 @@ real, dimension(n_pop) :: qual = 0.0,wire_list=0.0,mod_list=0.0
 real,dimension(4) :: rand
 logical :: again = .true.
 integer :: old_sum,epoch=200
-real :: b_wire=0
+real :: b_wire=0.0
 
 character(len=8) ::  date
 character(len=10) ::  time
@@ -217,12 +217,9 @@ if (mod(gen,epoch)==1) then
         run = run + 1
         print *,run
         if (run>run_thresh) then
-           b_wire = 0.1
+           b_wire = 1.0
         endif
         if (run>(run_thresh*2)) then
-           b_wire = 0.0
-        endif
-        if (run>(run_thresh*3)) then
            exit
         endif
     endif

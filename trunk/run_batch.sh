@@ -3,5 +3,5 @@ COUNTER=0
 while [  $COUNTER -lt 10 ];
 do
 	./main
-	let COUNTER = COUNTER + 1
+	let "COUNTER = COUNTER + 1"
 done   
