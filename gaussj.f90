@@ -17,7 +17,8 @@
 		lpiv = (ipiv == 0)
 		irc=maxloc(abs(a),outerand(lpiv,lpiv))
 		ipiv(icol)=ipiv(icol)+1
-		if (ipiv(icol) > 1) call nrerror('gaussj: singular matrix (1)')
+		!if (ipiv(icol) > 1) call nrerror('gaussj: singular matrix (1)')
+		if (ipiv(icol) > 1) exit
 		if (irow /= icol) then
 			call swap(a(irow,:),a(icol,:))
 			call swap(b(irow,:),b(icol,:))
@@ -25,8 +26,10 @@
 		indxr(i)=irow
 		indxc(i)=icol
 		if (a(icol,icol) == 0.0) &
-			call nrerror('gaussj: singular matrix (2)')
-		pivinv=1.0_sp/a(icol,icol)
+			exit
+                        !call nrerror('gaussj: singular matrix (2)')
+			
+                        pivinv=1.0_sp/a(icol,icol)
 		a(icol,icol)=1.0
 		a(icol,:)=a(icol,:)*pivinv
 		b(icol,:)=b(icol,:)*pivinv
