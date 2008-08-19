@@ -6,3 +6,8 @@ b_wire = 0.0/0.1
 graph2:
 integer,parameter :: n_pop=1000,L=300,n_gen=10000,run_thresh=6,n_gates=20,n_gates_nom=12,n_transient=5,n_inp=4
 b_wire = 0.1
+
+
+graph3:
+integer,parameter :: n_pop=1000,L=300,n_gen=10000,run_thresh=6,n_gates=20,n_gates_nom=12,n_transient=5,n_inp=4
+b_wire = 0.0/0.1
