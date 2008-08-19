@@ -55,7 +55,7 @@
 		d(:)=b(:)
 		z(:)=0.0
 	end do
-	call nrerror('too many iterations in jacobi')
+	!call nrerror('too many iterations in jacobi')
 	CONTAINS
 !BL
 	SUBROUTINE jrotate(a1,a2)

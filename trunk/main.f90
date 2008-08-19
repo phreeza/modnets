@@ -217,9 +217,12 @@ if (mod(gen,epoch)==1) then
         run = run + 1
         print *,run
         if (run>run_thresh) then
-           b_wire = 1.0
+           b_wire = 0.1
         endif
         if (run>(run_thresh*2)) then
+           b_wire = 0.0
+        endif
+        if (run>(run_thresh*3)) then
            exit
         endif
     endif
