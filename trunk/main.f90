@@ -13,6 +13,7 @@ integer,dimension(n_gates) :: active = 0
 integer,dimension(n_gates,n_gates) :: adj = 0
 integer,dimension(n_gates,n_pop) :: x=0,y=0
 integer,dimension( 2**n_inp) :: out = 0
+integer,dimension(8) :: datevals
 integer,dimension( n_pop ) :: order = 0
 integer,dimension(n_gates , n_pop):: in1=0 , in2=0
 integer,dimension(n_gates , n_pop) :: state=0,oldstate=0
@@ -27,13 +28,15 @@ character(len=10) ::  time
 character(len=10) ::  zone
 character(len=100) :: filename
 
-call date_and_time(date, time, zone)
+call date_and_time(date, time, zone,datevals)
 filename = "modularity-"//date//"-"//time(1:6)//".dat"
 
-CALL RANDOM_SEED
-
+!CALL RANDOM_SEED
+print*,datevals
 !CALL RANDOM_SEED 
-!CALL RANDOM_SEED(put = (/ 123, 222 /))
+call system_clock(count=a)
+print *,a
+CALL RANDOM_SEED(put = datevals*a)
 !call random_number(rand)
 
 
@@ -47,7 +50,7 @@ end do
 !out = iand(ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:))),ior(ieor(inp(5,:),inp(6,:)),ieor(inp(7,:),inp(8,:))))
 out = iand(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:)))
 !out(5) = 0
-print*, out 
+!print*, out 
 !pause
 !generate nets
 do a = 1,n_pop
@@ -98,7 +101,7 @@ print*,"Go!"
 do gen = 1,n_gen
 
 
-print*,gen
+!print*,gen
 qual = 0
 
 !evaluate nets
@@ -228,6 +231,7 @@ if (mod(gen,epoch)==1) then
     endif
 
 
+    print*,gen-1,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop,sum(mod_list)/n_pop
     OPEN(1, FILE=filename,position='append')  
     WRITE (1,*) gen-1,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop,sum(mod_list)/n_pop
 close(1)
@@ -236,7 +240,7 @@ endif
 !sort nets by quality
 
 call indexx(qual,order)
-print*,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop,sum(mod_list)/n_pop
+!print*,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop,sum(mod_list)/n_pop
 
 !pause
 
