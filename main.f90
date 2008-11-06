@@ -4,8 +4,8 @@ use nr,only:indexx,jacobi,gaussj
       
 implicit none
 
-integer,parameter :: n_pop=1000,L=300,n_gen=10000,run_thresh=6,n_gates=20,n_gates_nom=12,n_transient=5,n_inp=4
-real,parameter :: p_wire=0.66
+integer,parameter :: n_pop=1000,L=300,n_gen=20000,run_thresh=15,n_gates=20,n_gates_nom=12,n_transient=5,n_inp=4
+real,parameter :: p_wire=1.0
 !integer,parameter :: n_pop=1000,L=300,n_gen=100000,run_thresh=6,n_gates=50,n_gates_nom=30,n_transient=15,n_inp=8
 integer :: goal,gen,gate1,gate2
 integer :: a,b,c,run=0,max_qual=0
@@ -22,7 +22,7 @@ real, dimension(n_pop) :: qual = 0.0,wire_list=0.0,mod_list=0.0
 real,dimension(4) :: rand
 logical :: again = .true.
 integer :: old_sum,epoch=200
-real :: b_wire=0.1
+real :: b_wire=0.0
 
 character(len=8) ::  date
 character(len=10) ::  time
@@ -175,11 +175,7 @@ do a = 1,n_pop
                qual(a) = qual(a) - b_wire*wire_list(a)
            endif
    endif
-
-      
-   
-   
-   
+  
 end do
 !take measurements at regular intervals
 
@@ -221,8 +217,8 @@ if (mod(gen,epoch)==1) then
 
     !change environment on certain conditions
     if(maxval(qual)/2.**n_inp >= .99) then
-        !epoch = 20
-        !run = run + 1
+        epoch = 20
+        run = run + 1
         !print *,run
         if (run>run_thresh) then
            b_wire = 0.1
@@ -236,9 +232,11 @@ if (mod(gen,epoch)==1) then
     endif
 
 
-    print*,gen-1,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop,sum(mod_list)/n_pop
+    print*,gen-1,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop, &
+           sum(mod_list)/n_pop,maxval(mod_list)
     OPEN(1, FILE=filename,position='append')  
-    WRITE (1,*) gen-1,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop,sum(mod_list)/n_pop
+    WRITE (1,*) gen-1,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop, & 
+                sum(mod_list)/n_pop,maxval(mod_list)
 close(1)
 endif
 
