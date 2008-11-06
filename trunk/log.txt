@@ -21,3 +21,10 @@ b_wire = 0.1, p_wire = 1.0
 
 graph6:
 b_wire = 0.1, p_wire = 0.5
+
+graph8:
+p_wire=1.0 b_wire = 0.0/0.1
+longer period for stabilization when b_wire changes
+
+graph9:
+like 8, but with maximum modularity
