@@ -49,7 +49,8 @@ do a = 1,2**n_inp
 end do
 
 !out = iand(ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:))),ior(ieor(inp(5,:),inp(6,:)),ieor(inp(7,:),inp(8,:))))
-out = iand(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:)))
+!out = iand(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:)))
+out = ieor(ior(inp(1,:),inp(2,:)),iand(inp(3,:),inp(4,:)))
 !out(5) = 0
 !print*, out 
 !pause

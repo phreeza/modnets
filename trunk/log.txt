@@ -28,3 +28,9 @@ longer period for stabilization when b_wire changes
 
 graph9:
 like 8, but with maximum modularity
+
+graph10:
+like 9, but with different goal
+
+graph11:
+like 10, but with inverse wire optimisation
