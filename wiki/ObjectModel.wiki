@@ -1,0 +1,11 @@
+#summary The proposed layout for the new implementation.
+
+= Introduction =
+
+In order for the code to be more reusable and testable, I will write it in an object-oriented manner. This page lists the Objects I will implement, their methods and proerties, and the way they interact among each other.
+----
+= Objects =
+
+== Network ==
+== Population ==
+== Experiment ==
