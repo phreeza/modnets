@@ -4,8 +4,8 @@ use nr,only:indexx,jacobi,gaussj
       
 implicit none
 
-integer,parameter :: n_pop=1000,L=300,n_gen=20000,run_thresh=15,n_gates=20,n_gates_nom=12,n_transient=5,n_inp=4
-real,parameter :: p_wire=1.0
+integer,parameter :: n_pop=1000,L=300,n_gen=100000,run_thresh=15,n_gates=20,n_transient=5,n_inp=4
+real,parameter :: p_wire=0.0,p_mut=0.7
 !integer,parameter :: n_pop=1000,L=300,n_gen=100000,run_thresh=6,n_gates=50,n_gates_nom=30,n_transient=15,n_inp=8
 integer :: goal,gen,gate1,gate2
 integer :: a,b,c,run=0,max_qual=0
@@ -13,15 +13,15 @@ integer,dimension(n_inp , 2**n_inp) :: inp = 0
 integer,dimension(n_gates) :: active = 0
 integer,dimension(n_gates,n_gates) :: adj = 0
 integer,dimension(n_gates,n_pop) :: x=0,y=0
-integer,dimension( 2**n_inp) :: out = 0
+integer,dimension( 2**n_inp) :: out = 0,out2 = 0,out1=0
 integer,dimension(8) :: datevals
 integer,dimension( n_pop ) :: order = 0
 integer,dimension(n_gates , n_pop):: in1=0 , in2=0
 integer,dimension(n_gates , n_pop) :: state=0,oldstate=0
-real, dimension(n_pop) :: qual = 0.0,wire_list=0.0,mod_list=0.0
-real,dimension(4) :: rand
-logical :: again = .true.
-integer :: old_sum,epoch=200
+real, dimension(n_pop) :: qual = 0.0,wire_list=0.0,mod_list=0.0,rand_dummy=0.0
+real,dimension(5) :: rand
+logical :: again = .true., MVG = .false.
+integer :: old_sum,epoch=200,n_gates_nom = 10
 real :: b_wire=0.0
 
 character(len=8) ::  date
@@ -44,13 +44,15 @@ CALL RANDOM_SEED(put = datevals*a)
 
 do a = 1,2**n_inp
    do b = 1,n_inp
-      inp(b,a)=transfer(btest(a-1,b),0)
+      inp(b,a)=transfer(btest(a-1,b-1),0)
    end do
 end do
 
 !out = iand(ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:))),ior(ieor(inp(5,:),inp(6,:)),ieor(inp(7,:),inp(8,:))))
 !out = iand(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:)))
-out = ieor(ior(inp(1,:),inp(2,:)),iand(inp(3,:),inp(4,:)))
+out1 = iand(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:)))
+out2 = ior(ieor(inp(1,:),inp(2,:)),ieor(inp(3,:),inp(4,:)))
+out = out1
 !out(5) = 0
 !print*, out 
 !pause
@@ -122,9 +124,10 @@ do c = 1,2**n_inp
                 state(n_inp+1:n_gates,:) = 1 - x(n_inp+1:n_gates,:)*y(n_inp+1:n_gates,:)
         end do
         
-        !print*,sum(1-(IEOR(state,oldstate)),dim=1)/4
+        !print*,sum(1-(IEOR(state,oldstate)),dim=1)/n_gates
 
-        qual = qual + (1 - (IEOR(state(n_gates,:),spread(out(c),ncopies=n_pop,dim=1))))*sum(1-(IEOR(state,oldstate)),dim=1)/n_gates
+        !qual = qual+(1-(IEOR(state(n_gates,:),spread(out(c),ncopies=n_pop,dim=1))))*(sum(1-(IEOR(state,oldstate)),dim=1)/n_gates)
+        qual = qual+(1-(IEOR(state(n_gates,:),spread(out(c),ncopies=n_pop,dim=1))))
                 
 end do
 !print*,qual
@@ -150,8 +153,9 @@ do a = 1,n_pop
       qual(a) = 0.0
           
    else
-      if (sum(active(n_inp+1:n_gates-1)) /= n_gates_nom) then
-             qual(a) = 0.0
+      if (sum(active(n_inp+1:n_gates-1)) >= n_gates_nom) then
+             !qual(a) = 0.0
+             qual(a) = qual(a) - (sum(active(n_inp+1:n_gates-1)) - n_gates_nom)
       end if
    end if 
  max_qual = maxval(qual)
@@ -167,7 +171,7 @@ do a = 1,n_pop
      
    end do
 
-   if ((b_wire>0).and.(qual(a)>0) ) then 
+   if ((b_wire>0.0).and.(qual(a)>0.0) ) then 
            !print *,wire(adj,active)
            wire_list(a) = wire(adj,active)
            
@@ -181,9 +185,17 @@ end do
 !take measurements at regular intervals
 
 
-if (mod(gen,epoch)==1) then
-    !measure modularity
-   
+if (mod(gen,epoch)==0) then
+
+
+    if (MVG) then
+       if (all(out == out1)) then
+          out = out2
+       else
+          out = out1
+       end if
+    end if
+
     do a = 1,n_pop
     active = 0
     old_sum = 0
@@ -207,42 +219,54 @@ if (mod(gen,epoch)==1) then
          adj(in2(b,a),b) = 1
        end do
 
-    if ((qual(a)>0)) then 
+    if ((qual(a)>0.0)) then 
        wire_list(a) = wire(adj,active)
     else
-       wire_list(a) = 1
+       wire_list(a) = 10
     endif    
-    mod_list(a) = modularity(adj)
+    mod_list(a) = modularity(adj(find(active>0),find(active>0)))
     end do
 
 
     !change environment on certain conditions
-    if(maxval(qual)/2.**n_inp >= .99) then
-        epoch = 20
+    if((maxval(qual)/2.**n_inp >= .99).or.((.not.MVG).and.(run>0))) then
         run = run + 1
         !print *,run
         if (run>run_thresh) then
-           b_wire = 0.1
+           !b_wire = 0.1
         endif
         if (run>(run_thresh*2)) then
            b_wire = 0.0
+           epoch = 200
+           MVG = .false.
+           n_gates_nom = 10
         endif
-        if (run>(run_thresh*3)) then
+        if (run>(run_thresh*9)) then
            exit
         endif
+    else
+        if (MVG) then
+           run = 0
+        end if
     endif
 
 
-    print*,gen-1,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop, &
-           sum(mod_list)/n_pop,maxval(mod_list)
+    print*,gen,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop, &
+           sum(mod_list)/n_pop,maxval(mod_list),sum(mod_list(find(qual==maxval(qual))))/count(qual==maxval(qual)),run
     OPEN(1, FILE=filename,position='append')  
-    WRITE (1,*) gen-1,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop, & 
+    WRITE (1,*) gen,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop, & 
                 sum(mod_list)/n_pop,maxval(mod_list)
 close(1)
 endif
 
-!sort nets by quality
+!randomize order before sorting
+call random_number(rand_dummy)
+call indexx(rand_dummy,order)
+in1(:,:) = in1(:,order)
+in2(:,:) = in2(:,order)
+qual(:) = qual(order)
 
+!sort nets by quality
 call indexx(qual,order)
 !print*,maxval(qual)/2.**n_inp,real(sum(qual))/(2.**n_inp*n_pop),sum(wire_list)/n_pop,sum(mod_list)/n_pop
 
@@ -262,6 +286,7 @@ in2(:,1:L) = in2(:,n_pop-L+1:n_pop)
 !mutate nets
 do a = 1,n_pop-L
         call random_number(rand)
+        if (rand(4).lt.p_mut) then
         gate1 = floor(rand(1)*(n_gates-n_inp))+1+n_inp
         gate2 = floor(rand(2)*(n_gates))+1
         
@@ -269,6 +294,7 @@ do a = 1,n_pop-L
                 in1(gate1,a) = gate2
         else
                 in2(gate1,a) = gate2
+        end if
         end if
 end do
 
