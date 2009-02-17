@@ -1,36 +1,3 @@
-graph1:
-integer,parameter :: n_pop=1000,L=300,n_gen=10000,run_thresh=6,n_gates=20,n_gates_nom=12,n_transient=5,n_inp=4
-b_wire = 0.0/0.1
-
-
-graph2:
-integer,parameter :: n_pop=1000,L=300,n_gen=10000,run_thresh=6,n_gates=20,n_gates_nom=12,n_transient=5,n_inp=4
-b_wire = 0.1
-
-
-graph3:
-integer,parameter :: n_pop=1000,L=300,n_gen=10000,run_thresh=6,n_gates=20,n_gates_nom=12,n_transient=5,n_inp=4
-b_wire = 0.0/0.1
-
-
-graph4:
-b_wire = 0.0
-
-graph5:
-b_wire = 0.1, p_wire = 1.0
-
-graph6:
-b_wire = 0.1, p_wire = 0.5
-
-graph8:
-p_wire=1.0 b_wire = 0.0/0.1
-longer period for stabilization when b_wire changes
-
-graph9:
-like 8, but with maximum modularity
-
-graph10:
-like 9, but with different goal
-
-graph11:
-like 10, but with inverse wire optimisation
+25: MVG 12->11 gates
+26: MVG 11->10 gates
+27: FG with 10 gates
